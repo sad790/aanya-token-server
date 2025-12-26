@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from livekit import api
 import os
@@ -16,18 +16,28 @@ app.add_middleware(
 )
 
 @app.get("/token")
-def get_token():
-    token = api.AccessToken(
-        os.environ["LIVEKIT_API_KEY"],
-        os.environ["LIVEKIT_API_SECRET"]
-    ).with_identity("orb-ui").with_grants(
-        api.VideoGrants(
-            room_join=True,
-            room="aanya-room"
+def get_token(
+    user_id: str = Query(...),   # 👈 unique per user
+):
+    room_name = f"aanya-room-{user_id}"
+
+    token = (
+        api.AccessToken(
+            os.environ["LIVEKIT_API_KEY"],
+            os.environ["LIVEKIT_API_SECRET"],
         )
-    ).to_jwt()
+        .with_identity(user_id)     # 👈 unique identity
+        .with_grants(
+            api.VideoGrants(
+                room_join=True,
+                room=room_name
+            )
+        )
+        .to_jwt()
+    )
 
     return {
         "token": token,
-        "url": os.environ["LIVEKIT_URL"]
+        "url": os.environ["LIVEKIT_URL"],
+        "room": room_name
     }
